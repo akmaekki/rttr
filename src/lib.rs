@@ -1,6 +1,8 @@
-use std::io::Error;
+use std::collections::HashMap;
 use std::io::{self, Read};
+use std::io::Error;
 use std::result::{self};
+use std::collections::hash_map::RandomState;
 
 #[derive(Debug)]
 pub struct Config {
@@ -43,7 +45,35 @@ pub fn replace_single_single(
  'b' will be mapped to 'x' and 'c' will be mapped to 'x'.
  Example: echo "abc" | tr 'aba' 'x' => 'zyc' because
 */
-pub fn replace_multiple_single(input: &str, search_characters: &str, replace_character: char) -> String {
+pub fn replace_multiple_single(
+    input: &str,
+    search_characters: &str,
+    replace_character: char,
+) -> String {
+    let result = String::from(input);
+
+    input
+        .chars()
+        .map(|c| match c {
+            _ if search_characters.contains(c) => replace_character,
+            _ => c,
+        })
+        .collect()
+}
+
+/*
+ Example: echo "abc" | tr 'aba' 'xyz' => 'zyc' because
+ first characters 'a' of "source" will be mapped to first
+ character 'z' of "target", second character 'b' of "source"
+ will be mapped to second character 'y' of "target" and third
+ character 'a' of "source" will be mapped to third character
+ 'z' of "target".
+ Example: echo "abc" | tr 'abbb' 'xyzklm' => 'xkc'
+*/
+pub fn replace_multiple_multiple(input: &str, search_characters: &str, replace_character: &str)
+/*-> String*/
+{
+    /*
     let result = String::from(input);
 
     input
@@ -53,6 +83,51 @@ pub fn replace_multiple_single(input: &str, search_characters: &str, replace_cha
             _ => c
         })
         .collect()
+     */
+}
+
+fn normalize_char_arrays(search_characters: &str, replace_characters: &str) -> (String, String) {
+    let len_s = search_characters.len();
+    let len_r = replace_characters.len();
+
+    if len_s < len_r {
+        let new_replace = String::from(&replace_characters[0..len_s]);
+        (String::from(search_characters), String::from(new_replace))
+    } else {
+        let last_char = replace_characters.chars().nth(len_r - 1).unwrap();
+        let append = (0..(len_s - len_r)).map(|c| last_char).collect::<String>();
+        let new_replace = String::from([&replace_characters[..], &append[..]].concat());
+        (String::from(search_characters), String::from(new_replace))
+    }
+}
+
+fn create_mapping_table(search_chars: & str, replace_chars: &str) -> HashMap<char, char, RandomState> {
+    // if search_characters.len() != replace_characters.len() => throw
+    // if search_characters.len() == 0 throw
+
+    let mut table = HashMap::new();
+
+    // search: 'aaa' and 'xyz' would lead to
+    // a -> x, a -> y, a -> z and totally to
+    // a -> z and finally this map: {'a': 'z'}
+    // Therefore, traversing search-array from
+    // to left is easier.
+
+    println!("search: {:?}", search_chars.chars().rev());
+    println!("replace: {:?}", replace_chars.chars().rev());
+
+    for (i, c) in search_chars.chars().rev().enumerate() {
+        if !table.contains_key(&c) {
+            table.insert(c, replace_chars.chars().rev().nth(i).unwrap());
+        }
+    }
+
+    // Alternative idea:
+    // Use zip to create array of pairs and
+    // from this array create a map/set. But
+    // could contain duplicate keys.
+
+    table
 }
 
 #[cfg(test)]
@@ -127,5 +202,82 @@ mod test {
 
         println!("result: {}", result);
         assert_eq!("xxc", result);
+    }
+
+    #[test]
+    fn normalize_character_arrays() {
+        let search_character = "abcd";
+        let replace_character = "xy";
+
+        //let result = crate::get_mapping_table(&mut search_character, &mut replace_character);
+        let (a, b) = crate::normalize_char_arrays(&search_character, &replace_character);
+
+        assert_eq!("abcd", a);
+        assert_eq!("xyyy", b);
+    }
+
+    #[test]
+    fn normalize_character_arrays_2() {
+        let search_character = "ab";
+        let replace_character = "xyz";
+
+        //let result = crate::get_mapping_table(&mut search_character, &mut replace_character);
+        let (a, b) = crate::normalize_char_arrays(&search_character, &replace_character);
+
+        assert_eq!("ab", a);
+        assert_eq!("xy", b);
+    }
+
+    #[test]
+    fn normalize_character_arrays_3() {
+        let search_character = "a";
+        let replace_character = "xyz";
+
+        let (a, b) = crate::normalize_char_arrays(&search_character, &replace_character);
+
+        assert_eq!("a", a);
+        assert_eq!("x", b);
+    }
+
+    #[test]
+    fn generate_mapping_table_for_shorter_search_string() {
+        let search_character = "a";
+        let replace_character = "xyz";
+
+        let (search_character, replace_character) = crate::normalize_char_arrays(&search_character, &replace_character);
+        let table = crate::create_mapping_table(&search_character, &replace_character);
+
+        assert_eq!(table.get(&'a'), Some(&'x'));
+        assert_eq!(1, table.len());
+    }
+
+    #[test]
+    fn generate_mapping_table_for_shorter_replacement_string() {
+        let search_character = "abcd";
+        let replace_character = "xy";
+
+        let (search_character, replace_character) = crate::normalize_char_arrays(&search_character, &replace_character);
+        let table = crate::create_mapping_table(&search_character, &replace_character);
+
+        println!("table: {:?}", table);
+        assert_eq!(table.get(&'a'), Some(&'x'));
+        assert_eq!(table.get(&'b'), Some(&'y'));
+        assert_eq!(table.get(&'c'), Some(&'y'));
+        assert_eq!(table.get(&'d'), Some(&'y'));
+        assert_eq!(4, table.len());
+    }
+
+    #[test]
+    fn generate_mapping_table_for_duplicate_characters_in_search_string() {
+        let search_character = "abac";
+        let replace_character = "xyz";
+
+        let (search_character, replace_character) = crate::normalize_char_arrays(&search_character, &replace_character);
+        let table = crate::create_mapping_table(&search_character, &replace_character);
+
+        assert_eq!(table.get(&'a'), Some(&'z'));
+        assert_eq!(table.get(&'b'), Some(&'y'));
+        assert_eq!(table.get(&'c'), Some(&'z'));
+        assert_eq!(3, table.len());
     }
 }
