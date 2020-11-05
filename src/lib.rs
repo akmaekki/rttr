@@ -19,7 +19,11 @@ pub fn parse_config(args: &[String]) -> Config {
 }
 
 // Start with single character to search and replace for
-pub fn replace(input: &str, search_character: char, replace_character: char) -> String {
+pub fn replace_single_single(
+    input: &str,
+    search_character: char,
+    replace_character: char,
+) -> String {
     let result = String::from(input);
 
     input
@@ -27,6 +31,26 @@ pub fn replace(input: &str, search_character: char, replace_character: char) -> 
         .map(|c| match c {
             _ if c == search_character => replace_character,
             _ => c,
+        })
+        .collect()
+}
+
+/*
+ Start with multiple character to search and replace for.
+ Example: echo "abc" | tr 'abc' 'x' => 'xxx' because
+ 'abc' 'x' will be interpreted as 'abc' 'xxx' to fill
+ up to 3 characters. Then 'a' will be mapped to 'x',
+ 'b' will be mapped to 'x' and 'c' will be mapped to 'x'.
+ Example: echo "abc" | tr 'aba' 'x' => 'zyc' because
+*/
+pub fn replace_multiple_single(input: &str, search_characters: &str, replace_character: char) -> String {
+    let result = String::from(input);
+
+    input
+        .chars()
+        .map(|c| match c {
+            _ if search_characters.contains(c) => replace_character,
+            _ => c
         })
         .collect()
 }
@@ -62,7 +86,6 @@ pub fn read_from_stdin(buffer: &mut String) -> result::Result<(), Error> {
     Ok(())
 }
 
-
 #[cfg(test)]
 mod test {
     use super::*;
@@ -78,7 +101,7 @@ mod test {
         let search_character = 'k';
         let replace_character = '_';
 
-        let result = replace(input, search_character, replace_character);
+        let result = replace_single_single(input, search_character, replace_character);
 
         assert_eq!("abcdefghij_lmnopqrstuvwxyz", result);
     }
@@ -89,9 +112,20 @@ mod test {
         let search_character = 'k';
         let replace_character = '_';
 
-        let result = replace(input, search_character, replace_character);
+        let result = crate::replace_single_single(input, search_character, replace_character);
 
         assert_eq!(input, result);
     }
 
+    #[test]
+    fn replace_multiple_single() {
+        let input = "abc";
+        let search_character = "ab";
+        let replace_character = 'x';
+
+        let result = crate::replace_multiple_single(input, search_character, replace_character);
+
+        println!("result: {}", result);
+        assert_eq!("xxc", result);
+    }
 }
