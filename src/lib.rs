@@ -8,15 +8,39 @@ use std::collections::hash_map::RandomState;
 pub struct Config {
     search_characters: String,
     replacement_characters: String,
+    delete_mode_active: bool,
+}
+
+pub fn read_from_stdin(buffer: &mut String) -> result::Result<(), Error> {
+    let mut stdin = io::stdin();
+    stdin.read_to_string(buffer)?;
+
+    Ok(())
 }
 
 pub fn parse_config(args: &[String]) -> Config {
-    let search = args[1].clone();
-    let replacement = args[2].clone();
+    let mut search = args[1].clone();
+    let mut replace = args[2].clone();
+    let mut is_delete_mode = false;
+
+    if helpers::starts_and_ends_with_one_of(&search, &['"', '\'']) {
+        search.remove(0);
+        search.remove(search.len() - 1);
+    }
+
+    if helpers::starts_and_ends_with_one_of(&replace, &['"', '\'']) {
+        replace.remove(0);
+        replace.remove(replace.len() - 1);
+    }
+
+    if args.len() > 3 && args[3].contains("-d") {
+        is_delete_mode = true;
+    }
 
     Config {
         search_characters: search,
-        replacement_characters: replacement,
+        replacement_characters: replace,
+        delete_mode_active: is_delete_mode,
     }
 }
 
@@ -130,6 +154,41 @@ fn create_mapping_table(search_chars: & str, replace_chars: &str) -> HashMap<cha
     table
 }
 
+pub fn delete(input: &str, chars_for_deletion: &str) -> String {
+    input
+        .chars()
+        .filter(|c| !chars_for_deletion.contains(*c))
+        .collect()
+}
+
+#[cfg(test)]
+mod test_delete {
+    use crate::delete;
+
+    #[test]
+    fn delete_chars_if_present_in_input() {
+        let input = "abc_def_ghi";
+        let chars_for_deletion = "dEf";
+
+        let result = crate::delete(input, chars_for_deletion);
+
+        assert_eq!("abc_e_ghi", result, "Delete characters marked for deletion");
+    }
+
+    #[test]
+    fn delete_no_chars_if_not_included_in_input() {
+        let input = "abc_def_ghi";
+        let chars_for_deletion = "xyz";
+
+        let result = crate::delete(input, chars_for_deletion);
+
+        assert_eq!(
+            "abc_def_ghi", result,
+            "Do not delete characters not marked for deletion"
+        );
+    }
+}
+
 #[cfg(test)]
 mod test_config {
     use crate::parse_config;
@@ -149,8 +208,21 @@ mod test_config {
 
         let config = parse_config(&args);
 
-        assert_eq!(args[1], config.search_characters);
-        assert_eq!(args[2], config.replacement_characters);
+    #[test]
+    fn recognizes_delete_cmd_line_flag() {
+        let args: [String; 4] = [
+            String::from("rttr"),
+            String::from("abc"),
+            String::from("def"),
+            String::from("-d"),
+        ];
+
+        let config = crate::parse_config(&args);
+
+        assert_eq!(
+            true, config.delete_mode_active,
+            "Read `delete flag` if present"
+        );
     }
 }
 
