@@ -19,11 +19,10 @@ pub fn main() -> io::Result<()> {
 
     // Pass string to make replacements in, characters to replace and
     // replacement characters to function and return processed input.
-    rttr::replace()
+    // rttr::replace()
 
     // Output read data from stdin
     println!("{}", buffer);
 
     Ok(())
 }
-
