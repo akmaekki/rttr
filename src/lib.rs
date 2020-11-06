@@ -1,7 +1,7 @@
 use std::collections::hash_map::RandomState;
 use std::collections::HashMap;
-use std::io::{self, Read};
 use std::io::Error;
+use std::io::{self, Read};
 use std::result::{self};
 
 mod helpers;
@@ -87,20 +87,19 @@ pub fn replace_multiple_single(
  'z' of "target".
  Example: echo "abc" | tr 'abbb' 'xyzklm' => 'xkc'
 */
-pub fn replace_multiple_multiple(input: &str, search_characters: &str, replace_character: &str)
-/*-> String*/
-{
-    /*
-    let result = String::from(input);
+pub fn replace_multiple_multiple(input: &str, search_chars: &str, replace_chars: &str) -> String {
+    let (search_chars_normalised, replace_chars_normalised) =
+        normalize_char_arrays(search_chars, replace_chars);
+    let chars_mapping_table =
+        create_character_mapping_table(&search_chars_normalised, &replace_chars_normalised);
 
     input
         .chars()
         .map(|c| match c {
-            _ if search_characters.contains(c) => replace_character,
-            _ => c
+            _ if chars_mapping_table.contains_key(&c) => chars_mapping_table[&c],
+            _ => c,
         })
         .collect()
-     */
 }
 
 fn normalize_char_arrays(search_characters: &str, replace_characters: &str) -> (String, String) {
