@@ -9,8 +9,8 @@ mod helpers;
 #[derive(Debug)]
 pub struct Config {
     pub search_characters: String,
-    pub replacement_characters: String,
-    pub delete_mode_active: bool,
+    pub replac_characters: String,
+    pub is_delete_mode: bool,
 }
 
 pub fn read_from_stdin(buffer: &mut String) -> result::Result<(), Error> {
@@ -20,10 +20,10 @@ pub fn read_from_stdin(buffer: &mut String) -> result::Result<(), Error> {
     Ok(())
 }
 
-pub fn parse_config(mut args: &[String]) -> Config {
+pub fn parse_config(args: &[String]) -> Config {
     let search;
     let mut replace = "".to_string();
-    let is_delete_mode ;
+    let is_delete_mode;
 
     if args[1].contains("-d") {
         is_delete_mode = true;
@@ -36,8 +36,8 @@ pub fn parse_config(mut args: &[String]) -> Config {
 
     Config {
         search_characters: search,
-        replacement_characters: replace,
-        delete_mode_active: is_delete_mode,
+        replac_characters: replace,
+        is_delete_mode: is_delete_mode,
     }
 }
 
@@ -112,13 +112,13 @@ fn normalize_char_arrays(search_characters: &str, replace_characters: &str) -> (
         (String::from(search_characters), String::from(new_replace))
     } else {
         let last_char = replace_characters.chars().nth(len_r - 1).unwrap();
-        let append = (0..(len_s - len_r)).map(|c| last_char).collect::<String>();
+        let append = (0..(len_s - len_r)).map(|_| last_char).collect::<String>();
         let new_replace = String::from([&replace_characters[..], &append[..]].concat());
         (String::from(search_characters), String::from(new_replace))
     }
 }
 
-fn create_mapping_table(
+fn create_character_mapping_table(
     search_chars: &str,
     replace_chars: &str,
 ) -> HashMap<char, char, RandomState> {
@@ -191,7 +191,7 @@ mod test_config {
         let mut args = [
             String::from("rttr"),
             String::from("abc"),
-            String::from("def")
+            String::from("def"),
         ];
 
         let config = crate::parse_config(&args);
@@ -201,7 +201,7 @@ mod test_config {
             "Read `search string` from command line"
         );
         assert_eq!(
-            "def", config.replacement_characters,
+            "def", config.replac_characters,
             "Read `replace string` from command line"
         );
     }
@@ -211,7 +211,7 @@ mod test_config {
         let args = [
             String::from("rttr"),
             String::from("'abc'"),
-            String::from("\"def\"")
+            String::from("\"def\""),
         ];
 
         let config = crate::parse_config(&args);
@@ -221,7 +221,7 @@ mod test_config {
             "Replace surrounding quotes (single/double) from `search string`"
         );
         assert_eq!(
-            "def", config.replacement_characters,
+            "def", config.replac_characters,
             "Replace surrounding quotes (single/double) from `replace string`"
         );
     }
@@ -231,7 +231,7 @@ mod test_config {
         let args = [
             String::from("rttr"),
             String::from("'abc"),
-            String::from("def\"")
+            String::from("def\""),
         ];
 
         let config = crate::parse_config(&args);
@@ -241,7 +241,7 @@ mod test_config {
             "Do not replace quotes (single/double) from `search string` that are not pairwise"
         );
         assert_eq!(
-            "def\"", config.replacement_characters,
+            "def\"", config.replac_characters,
             "Do not replace quotes (single/double) from `replace string` that are not pairwise"
         );
     }
@@ -257,15 +257,12 @@ mod test_config {
 
         let config = crate::parse_config(&args);
 
-        assert_eq!(
-            true, config.delete_mode_active,
-            "Read `delete flag` if present"
-        );
+        assert_eq!(true, config.is_delete_mode, "Read `delete flag` if present");
     }
 }
 
 #[cfg(test)]
-mod test {
+mod test_single {
     use super::*;
 
     #[test]
@@ -276,7 +273,10 @@ mod test {
 
         let result = crate::replace_single_single(input, search_character, replace_character);
 
-        assert_eq!("abcdefghij_lmnopqrstuvwxyz", result, "Replace single character if marked for deletion");
+        assert_eq!(
+            "abcdefghij_lmnopqrstuvwxyz", result,
+            "Replace single character if marked for deletion"
+        );
     }
 
     #[test]
@@ -287,7 +287,7 @@ mod test {
 
         let result = crate::replace_single_single(input, search_character, replace_character);
 
-        assert_eq!(input, result);
+        assert_eq!(input, result, "Do not replace in empty string");
     }
 
     #[test]
@@ -298,7 +298,10 @@ mod test {
 
         let result = crate::replace_multiple_single(input, search_character, replace_character);
 
-        assert_eq!("xxc", result, "Replace multiple different characters with only character in `replace string`");
+        assert_eq!(
+            "xxc", result,
+            "Replace multiple different characters with only character in `replace string`"
+        );
     }
 
     #[test]
@@ -321,51 +324,101 @@ mod test {
         //let result = crate::get_mapping_table(&mut search_character, &mut replace_character);
         let (a, b) = crate::normalize_char_arrays(&search_character, &replace_character);
 
-        assert_eq!("ab", a, "Keep `search string` unchanged if smaller than `replace string`");
-        assert_eq!("xy", b, "Remove right part of `replace string` to have equal size to `search string`");
+        assert_eq!(
+            "ab", a,
+            "Keep `search string` unchanged if smaller than `replace string`"
+        );
+        assert_eq!(
+            "xy", b,
+            "Remove right part of `replace string` to have equal size to `search string`"
+        );
     }
 
     #[test]
-    fn generate_mapping_table_for_shorter_search_string() {
+    fn generate_character_mapping_table_for_shorter_search_string() {
         let search_character = "a";
         let replace_character = "xyz";
 
         let (search_character, replace_character) =
             crate::normalize_char_arrays(&search_character, &replace_character);
-        let table = crate::create_mapping_table(&search_character, &replace_character);
+        let table = crate::create_character_mapping_table(&search_character, &replace_character);
 
-        assert_eq!(table.get(&'a'), Some(&'x'));
-        assert_eq!(1, table.len());
+        assert_eq!(
+            table.get(&'a'),
+            Some(&'x'),
+            "Map first character in `search string` to first character of `replace string`"
+        );
+        assert_eq!(
+            1,
+            table.len(),
+            "Table length should be length of unique entries in `search string`"
+        );
     }
 
     #[test]
-    fn generate_mapping_table_for_shorter_replacement_string() {
+    fn generate_character_mapping_table_for_shorter_replacement_string() {
         let search_character = "abcd";
         let replace_character = "xy";
 
         let (search_character, replace_character) =
             crate::normalize_char_arrays(&search_character, &replace_character);
-        let table = crate::create_mapping_table(&search_character, &replace_character);
+        let table = crate::create_character_mapping_table(&search_character, &replace_character);
 
-        assert_eq!(table.get(&'a'), Some(&'x'));
-        assert_eq!(table.get(&'b'), Some(&'y'));
-        assert_eq!(table.get(&'c'), Some(&'y'));
-        assert_eq!(table.get(&'d'), Some(&'y'));
-        assert_eq!(4, table.len());
+        assert_eq!(
+            table.get(&'a'),
+            Some(&'x'),
+            "Map first character in `search string` to first character of `replace string`"
+        );
+        assert_eq!(
+            table.get(&'b'),
+            Some(&'y'),
+            "Map second character in `search string` to second character of `replace string`"
+        );
+        assert_eq!(
+            table.get(&'c'),
+            Some(&'y'),
+            "Map third character in `search string` to second character of `replace string` if length of `replace string` is two"
+        );
+        assert_eq!(
+            table.get(&'d'),
+            Some(&'y'),
+            "Map fourth character in `search string` to second character of `replace string` if length of `replace string` is two"
+        );
+        assert_eq!(
+            4,
+            table.len(),
+            "Table length should be length of unique entries in `search string`"
+        );
     }
 
     #[test]
-    fn generate_mapping_table_for_duplicate_characters_in_search_string() {
+    fn generate_character_mapping_table_for_duplicate_characters_in_search_string() {
         let search_character = "abac";
         let replace_character = "xyz";
 
         let (search_character, replace_character) =
             crate::normalize_char_arrays(&search_character, &replace_character);
-        let table = crate::create_mapping_table(&search_character, &replace_character);
+        let table = crate::create_character_mapping_table(&search_character, &replace_character);
 
-        assert_eq!(table.get(&'a'), Some(&'z'));
-        assert_eq!(table.get(&'b'), Some(&'y'));
-        assert_eq!(table.get(&'c'), Some(&'z'));
-        assert_eq!(3, table.len());
+        assert_eq!(
+            table.get(&'a'),
+            Some(&'z'),
+            "Map first character in `search string` not to first character of `replace string` if it appears more often in `search string`"
+        );
+        assert_eq!(
+            table.get(&'b'),
+            Some(&'y'),
+            "Map second character in `search string` to second character of `replace string` if both appear only once"
+        );
+        assert_eq!(
+            table.get(&'c'),
+            Some(&'z'),
+            "Map fourth character in `search string` to third character of `replace string` if length of `replace string` is three"
+        );
+        assert_eq!(
+            3,
+            table.len(),
+            "Table length should be length of unique entries in `search string`"
+        );
     }
 }
