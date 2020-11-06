@@ -20,7 +20,7 @@ pub fn main() {
 
     // Logik eventuell auslagern in `run`-Methode.
     // `main` sollte kurz bleiben.
-    if (config.delete_mode_active) {
+    if (config.is_delete_mode) {
         let result = rttr::delete(&buffer, &config.search_characters);
         print!("{}", result);
     } else {
