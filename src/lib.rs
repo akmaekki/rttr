@@ -155,8 +155,6 @@ pub fn delete(input: &str, chars_for_deletion: &str) -> String {
 
 #[cfg(test)]
 mod test_delete {
-    use super::*;
-
     #[test]
     fn delete_chars_if_present_in_input() {
         let input = "abc_def_ghi";
@@ -183,11 +181,9 @@ mod test_delete {
 
 #[cfg(test)]
 mod test_config {
-    use super::*;
-
     #[test]
     fn reads_cmd_line_args_to_config_and_strips_surrounding_quotes() {
-        let mut args = [
+        let args = [
             String::from("rttr"),
             String::from("abc"),
             String::from("def"),
@@ -262,8 +258,6 @@ mod test_config {
 
 #[cfg(test)]
 mod test_single {
-    use super::*;
-
     #[test]
     fn replace_single_search_character_with_single_replacement_character() {
         let input = "abcdefghijklmnopqrstuvwxyz";
@@ -302,7 +296,10 @@ mod test_single {
             "Replace multiple different characters with only character in `replace string`"
         );
     }
+}
 
+#[cfg(test)]
+mod test_normalize_character_arrays {
     #[test]
     fn normalize_character_arrays_if_search_longer_than_replace() {
         let search_character = "abcd";
@@ -332,7 +329,10 @@ mod test_single {
             "Remove right part of `replace string` to have equal size to `search string`"
         );
     }
+}
 
+#[cfg(test)]
+mod test_character_generate_mapping_table {
     #[test]
     fn generate_character_mapping_table_for_shorter_search_string() {
         let search_character = "a";
@@ -418,6 +418,62 @@ mod test_single {
             3,
             table.len(),
             "Table length should be length of unique entries in `search string`"
+        );
+    }
+}
+
+#[cfg(test)]
+mod test_multi {
+    #[test]
+    fn replace_multiple_search_character_with_multiple_replacement_character() {
+        let input = "abcdefghijklmnopqrstuvwxyz";
+        let search_character = "akz";
+        let replace_character = "-_/";
+
+        let result = crate::replace_multiple_multiple(input, search_character, replace_character);
+
+        assert_eq!(
+            "-bcdefghij_lmnopqrstuvwxy/", result,
+            "Replace multiple charactes"
+        );
+    }
+
+    #[test]
+    fn replacemultiple_nothing_if_empty_input_string() {
+        let input = "";
+        let search_character = "xyz";
+        let replace_character = "abc";
+
+        let result = crate::replace_multiple_multiple(input, search_character, replace_character);
+
+        assert_eq!(input, result, "Do not replace in empty string");
+    }
+
+    #[test]
+    fn replacemultiple_search_string_longer_than_replacement_string() {
+        let input = "abcdefghijklmnopqrstuvwxyz";
+        let search_character = "abcz";
+        let replace_character = "xxy";
+
+        let result = crate::replace_multiple_multiple(input, search_character, replace_character);
+
+        assert_eq!(
+            "xxydefghijklmnopqrstuvwxyy", result,
+            "Replace multiple different characters with only character in `replace string`"
+        );
+    }
+
+    #[test]
+    fn replacemultiple_search_string_shorter_than_replacement_string() {
+        let input = "abcdefghijklmnopqrstuvwxyz";
+        let search_character = "ab";
+        let replace_character = "123";
+
+        let result = crate::replace_multiple_multiple(input, search_character, replace_character);
+
+        assert_eq!(
+            "12cdefghijklmnopqrstuvwxyz", result,
+            "Replace multiple different characters with only character in `replace string`"
         );
     }
 }
