@@ -1,7 +1,3 @@
-pub fn test() {
-    println!("test")
-}
-
 fn starts_and_ends_with_one_of(input: &str, chars: &[char]) -> bool {
     if input.len() < 2 {
         return false;
