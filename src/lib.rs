@@ -8,9 +8,9 @@ mod helpers;
 
 #[derive(Debug)]
 pub struct Config {
-    search_characters: String,
-    replacement_characters: String,
-    delete_mode_active: bool,
+    pub search_characters: String,
+    pub replacement_characters: String,
+    pub delete_mode_active: bool,
 }
 
 pub fn read_from_stdin(buffer: &mut String) -> result::Result<(), Error> {
@@ -20,23 +20,18 @@ pub fn read_from_stdin(buffer: &mut String) -> result::Result<(), Error> {
     Ok(())
 }
 
-pub fn parse_config(args: &[String]) -> Config {
-    let mut search = args[1].clone();
-    let mut replace = args[2].clone();
-    let mut is_delete_mode = false;
+pub fn parse_config(mut args: &[String]) -> Config {
+    let search;
+    let mut replace = "".to_string();
+    let is_delete_mode ;
 
-    if helpers::starts_and_ends_with_one_of(&search, &['"', '\'']) {
-        search.remove(0);
-        search.remove(search.len() - 1);
-    }
-
-    if helpers::starts_and_ends_with_one_of(&replace, &['"', '\'']) {
-        replace.remove(0);
-        replace.remove(replace.len() - 1);
-    }
-
-    if args.len() > 3 && args[3].contains("-d") {
+    if args[1].contains("-d") {
         is_delete_mode = true;
+        search = helpers::strip_from_start_and_end(&args[2], &['"', '\'']);
+    } else {
+        is_delete_mode = false;
+        search = helpers::strip_from_start_and_end(&args[1], &['"', '\'']);
+        replace = helpers::strip_from_start_and_end(&args[2], &['"', '\'']);
     }
 
     Config {
@@ -161,7 +156,7 @@ pub fn delete(input: &str, chars_for_deletion: &str) -> String {
 
 #[cfg(test)]
 mod test_delete {
-    use crate::delete;
+    use super::*;
 
     #[test]
     fn delete_chars_if_present_in_input() {
@@ -189,14 +184,14 @@ mod test_delete {
 
 #[cfg(test)]
 mod test_config {
-    use crate::parse_config;
+    use super::*;
 
     #[test]
     fn reads_cmd_line_args_to_config_and_strips_surrounding_quotes() {
-        let args: [String; 3] = [
+        let mut args = [
             String::from("rttr"),
             String::from("abc"),
-            String::from("def"),
+            String::from("def")
         ];
 
         let config = crate::parse_config(&args);
@@ -213,10 +208,10 @@ mod test_config {
 
     #[test]
     fn replaces_starting_and_ending_quotes_from_search_and_replace() {
-        let args: [String; 3] = [
+        let args = [
             String::from("rttr"),
             String::from("'abc'"),
-            String::from("\"def\""),
+            String::from("\"def\"")
         ];
 
         let config = crate::parse_config(&args);
@@ -233,10 +228,10 @@ mod test_config {
 
     #[test]
     fn replaces_not_single_starting_or_ending_quotes_from_search_and_replace() {
-        let args: [String; 3] = [
+        let args = [
             String::from("rttr"),
             String::from("'abc"),
-            String::from("def\""),
+            String::from("def\"")
         ];
 
         let config = crate::parse_config(&args);
@@ -253,11 +248,11 @@ mod test_config {
 
     #[test]
     fn recognizes_delete_cmd_line_flag() {
-        let args: [String; 4] = [
+        let args = [
             String::from("rttr"),
+            String::from("-d"),
             String::from("abc"),
             String::from("def"),
-            String::from("-d"),
         ];
 
         let config = crate::parse_config(&args);

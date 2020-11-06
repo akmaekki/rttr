@@ -2,7 +2,7 @@ pub fn test() {
     println!("test")
 }
 
-pub fn starts_and_ends_with_one_of(input: &str, chars: &[char]) -> bool {
+fn starts_and_ends_with_one_of(input: &str, chars: &[char]) -> bool {
     if input.len() < 2 {
         return false;
     }
@@ -17,4 +17,15 @@ pub fn starts_and_ends_with_one_of(input: &str, chars: &[char]) -> bool {
     let ends_with_char = chars.contains(&last);
 
     starts_with_char && ends_with_char
+}
+
+pub fn strip_from_start_and_end(input: &str, chars: &[char]) -> String {
+    let mut result = input.to_string();
+
+    if starts_and_ends_with_one_of(input, chars) {
+        result.remove(0);
+        result.remove(result.len() - 1);
+    }
+
+    result
 }
